@@ -1,19 +1,15 @@
 {
-  "name": "form-scanner",
+  "name": "phone-mitm-proxy",
   "version": "1.0.0",
-  "description": "Form submission scanner with dashboard",
-  "main": "server.js",
+  "description": "HTTP/HTTPS MITM proxy для перехвата номеров телефонов",
+  "main": "proxy.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node proxy.js",
+    "install-cert": "node install-cert.js"
   },
   "dependencies": {
+    "http-mitm-proxy": "^0.9.0",
     "better-sqlite3": "^9.4.3",
-    "express": "^4.18.3",
-    "node-cron": "^3.0.3",
-    "puppeteer": "^22.4.1"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
+    "chalk": "^4.1.2"
   }
 }
