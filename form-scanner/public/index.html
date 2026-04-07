@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Form Scanner — Панель управления</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Onest:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --bg:       #0c0d0f;
+      --surface:  #131416;
+      --panel:    #1a1b1e;
+      --border:   #252629;
+      --border2:  #2e3035;
+      --text:     #e8e9ec;
+      --muted:    #6b6e78;
+      --accent:   #e8ff47;
+      --accent2:  #47d4ff;
+      --danger:   #ff4d6a;
+      --success:  #3ddc84;
+      --warn:     #ffb347;
+      --mono:     'JetBrains Mono', monospace;
+      --sans:     'Onest', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+
+    /* ── LAYOUT ── */
+    .app { display: flex; min-height: 100vh; }
+
+    .sidebar {
+      width: 220px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 0;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+    }
+
+    .logo {
+      padding: 20px 20px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo-mark {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .15em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+    .logo-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+      letter-spacing: .04em;
+    }
+
+    .nav { padding: 12px 0; flex: 1; }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      transition: color .15s, background .15s;
+      border-left: 2px solid transparent;
+      user-select: none;
+    }
+    .nav-item:hover { color: var(--text); background: rgba(255,255,255,.03); }
+    .nav-item.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(232,255,71,.05);
+    }
+    .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+
+    .sidebar-footer {
+      padding: 12px 20px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .status-dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--success);
+      display: inline-block;
+      margin-right: 6px;
+      box-shadow: 0 0 6px var(--success);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.5} }
+    .status-label { font-size: 11px; color: var(--muted); }
+
+    .main {
+      margin-left: 220px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .topbar {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 90;
+    }
+    .page-title {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -.01em;
+    }
+    .topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+    .content { padding: 24px 28px; flex: 1; }
+
+    /* ── STATS GRID ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px;
+      margin-bottom: 24px;
+    }
+    .stat-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px 18px;
+    }
+    .stat-value {
+      font-family: var(--mono);
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-value.accent  { color: var(--accent); }
+    .stat-value.success { color: var(--success); }
+    .stat-value.warn    { color: var(--warn); }
+    .stat-value.danger  { color: var(--danger); }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: .02em;
+    }
+    .card-body { padding: 18px; }
+
+    /* ── BUTTONS ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 14px;
+      border-radius: 7px;
+      border: none;
+      cursor: pointer;
+      font-family: var(--sans);
+      font-size: 13px;
+      font-weight: 500;
+      transition: opacity .15s, transform .1s;
+      white-space: nowrap;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #111; }
+    .btn-primary:hover:not(:disabled) { opacity: .88; }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover:not(:disabled) { color: var(--text); border-color: var(--muted); }
+    .btn-danger { background: rgba(255,77,106,.12); color: var(--danger); border: 1px solid rgba(255,77,106,.25); }
+    .btn-danger:hover:not(:disabled) { background: rgba(255,77,106,.22); }
+    .btn-success { background: rgba(61,220,132,.12); color: var(--success); border: 1px solid rgba(61,220,132,.25); }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+
+    /* ── FORM ── */
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-full { grid-column: 1/-1; }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-label { font-size: 12px; color: var(--muted); font-weight: 500; letter-spacing: .04em; text-transform: uppercase; }
+    .form-input, .form-select {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color .15s;
+      width: 100%;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--accent); }
+    .form-input::placeholder { color: var(--muted); }
+    .form-select option { background: var(--panel); }
+    .form-row { display: flex; gap: 10px; margin-top: 14px; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: rgba(255,255,255,.025); }
+    td { padding: 11px 14px; font-size: 13px; color: var(--text); vertical-align: middle; }
+    .td-phone {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--accent2);
+    }
+    .td-muted { color: var(--muted); font-size: 12px; }
+    .td-site { font-weight: 500; }
+    .td-url { color: var(--muted); font-size: 11px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: .03em;
+    }
+    .badge-ok      { background: rgba(61,220,132,.15); color: var(--success); }
+    .badge-error   { background: rgba(255,77,106,.15); color: var(--danger); }
+    .badge-pending { background: rgba(255,179,71,.15); color: var(--warn); }
+    .badge-active  { background: rgba(232,255,71,.12); color: var(--accent); }
+    .badge-paused  { background: rgba(107,110,120,.15); color: var(--muted); }
+
+    /* ── SEARCH BAR ── */
+    .search-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-input {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-radius: 7px;
+      padding: 7px 12px;
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 13px;
+      outline: none;
+      flex: 1;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .search-input::placeholder { color: var(--muted); }
+
+    /* ── SITE CARDS ── */
+    .site-list { display: flex; flex-direction: column; gap: 10px; }
+    .site-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .site-item-info { flex: 1; min-width: 0; }
+    .site-item-name { font-weight: 600; font-size: 14px; margin-bottom: 2px; }
+    .site-item-url  { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .site-item-meta { font-size: 11px; color: var(--muted); margin-top: 4px; display: flex; gap: 12px; }
+    .site-item-actions { display: flex; gap: 6px; flex-shrink: 0; align-items: center; }
+
+    /* ── SPINNER ── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.15);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── TOAST ── */
+    .toast-wrap {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      background: var(--panel);
+      border: 1px solid var(--border2);
+      border-radius: 9px;
+      padding: 11px 16px;
+      font-size: 13px;
+      animation: slideIn .2s ease;
+      min-width: 200px;
+    }
+    .toast.ok     { border-left: 3px solid var(--success); }
+    .toast.error  { border-left: 3px solid var(--danger); }
+    .toast.info   { border-left: 3px solid var(--accent2); }
+    @keyframes slideIn { from{transform:translateY(12px);opacity:0}to{transform:none;opacity:1} }
+
+    /* ── MISC ── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 20px;
+      color: var(--muted);
+    }
+    .empty-icon { font-size: 36px; margin-bottom: 12px; }
+    .empty-text { font-size: 14px; }
+    .divider { height: 1px; background: var(--border); margin: 16px 0; }
+    .toggle {
+      width: 36px; height: 20px;
+      background: var(--border2);
+      border-radius: 10px;
+      cursor: pointer;
+      position: relative;
+      transition: background .2s;
+      border: none;
+      flex-shrink: 0;
+    }
+    .toggle.on { background: var(--accent); }
+    .toggle::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px; left: 3px;
+      transition: left .2s;
+    }
+    .toggle.on::after { left: 19px; }
+    .log-line {
+      font-family: var(--mono);
+      font-size: 11px;
+      padding: 6px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      display: flex;
+      gap: 12px;
+    }
+    .log-line:last-child { border: none; }
+    .log-time { color: var(--muted); flex-shrink: 0; }
+    .log-msg { color: var(--text); }
+    .log-ok    .log-msg { color: var(--success); }
+    .log-error .log-msg { color: var(--danger); }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ── API ──────────────────────────────────────────────────────────────────────
+const api = {
+  get:    (url)      => fetch(url).then(r => r.json()),
+  post:   (url, d)   => fetch(url, { method:'POST',   headers:{'Content-Type':'application/json'}, body: JSON.stringify(d) }).then(r => r.json()),
+  patch:  (url, d)   => fetch(url, { method:'PATCH',  headers:{'Content-Type':'application/json'}, body: JSON.stringify(d) }).then(r => r.json()),
+  delete: (url)      => fetch(url, { method:'DELETE' }).then(r => r.json()),
+};
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+let toastCb = null;
+function Toast({ children }) {
+  const [toasts, setToasts] = useState([]);
+  toastCb = useCallback((msg, type='ok') => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, type }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 3200);
+  }, []);
+  return React.createElement('div', { className:'toast-wrap' },
+    toasts.map(t => React.createElement('div', { key:t.id, className:`toast ${t.type}` }, t.msg))
+  );
+}
+const toast = (msg, type) => toastCb && toastCb(msg, type);
+
+// ── STATS ────────────────────────────────────────────────────────────────────
+function Stats() {
+  const [s, setS] = useState(null);
+  const load = () => api.get('/api/stats').then(setS);
+  useEffect(() => { load(); const t = setInterval(load, 15000); return () => clearInterval(t); }, []);
+  if (!s) return null;
+  return React.createElement('div', { className:'stats-grid' },
+    [
+      { label:'Всего сайтов',    val: s.total_sites,  cls:'' },
+      { label:'Активных',        val: s.active_sites,  cls:'accent' },
+      { label:'Всего заявок',    val: s.total_leads,   cls:'success' },
+      { label:'Сегодня заявок',  val: s.today_leads,   cls:'accent' },
+      { label:'Сканирований',    val: s.total_scans,   cls:'' },
+      { label:'Ошибок',          val: s.error_scans,   cls: s.error_scans > 0 ? 'danger' : '' },
+    ].map(({ label, val, cls }) =>
+      React.createElement('div', { key:label, className:'stat-card' },
+        React.createElement('div', { className:`stat-value ${cls}` }, val),
+        React.createElement('div', { className:'stat-label' }, label)
+      )
+    )
+  );
+}
+
+// ── SITES PAGE ───────────────────────────────────────────────────────────────
+function SitesPage() {
+  const [sites, setSites]     = useState([]);
+  const [form, setForm]       = useState({ name:'', url:'', interval:60 });
+  const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState({});
+
+  const load = () => api.get('/api/sites').then(setSites);
+  useEffect(() => { load(); const t = setInterval(load, 10000); return () => clearInterval(t); }, []);
+
+  const add = async () => {
+    if (!form.name.trim() || !form.url.trim()) return toast('Заполни название и URL', 'error');
+    let url = form.url.trim();
+    if (!url.startsWith('http')) url = 'https://' + url;
+    setLoading(true);
+    const r = await api.post('/api/sites', { ...form, url });
+    setLoading(false);
+    if (r.error) return toast(r.error, 'error');
+    setForm({ name:'', url:'', interval:60 });
+    load();
+    toast('Сайт добавлен', 'ok');
+  };
+
+  const del = async (id, name) => {
+    if (!confirm(`Удалить ${name}?`)) return;
+    await api.delete(`/api/sites/${id}`);
+    load(); toast('Удалён', 'ok');
+  };
+
+  const toggle = async (site) => {
+    await api.patch(`/api/sites/${site.id}`, { active: !site.active });
+    load();
+  };
+
+  const scan = async (id) => {
+    setScanning(s => ({...s, [id]:true}));
+    toast('Запуск сканирования…', 'info');
+    const r = await api.post(`/api/sites/${id}/scan`);
+    setScanning(s => ({...s, [id]:false}));
+    if (r.success) toast(`Готово — найдено заявок: ${r.leads}`, 'ok');
+    else toast(`Ошибка: ${r.error}`, 'error');
+    load();
+  };
+
+  const fmtDate = d => d ? new Date(d + 'Z').toLocaleString('ru') : '—';
+
+  return React.createElement('div', null,
+    // Add form
+    React.createElement('div', { className:'card' },
+      React.createElement('div', { className:'card-header' },
+        React.createElement('span', { className:'card-title' }, '+ Добавить сайт')
+      ),
+      React.createElement('div', { className:'card-body' },
+        React.createElement('div', { className:'form-grid' },
+          React.createElement('div', { className:'form-group' },
+            React.createElement('label', { className:'form-label' }, 'Название'),
+            React.createElement('input', { className:'form-input', placeholder:'CrazyDrift Franchise', value:form.name, onChange:e=>setForm(f=>({...f,name:e.target.value})) })
+          ),
+          React.createElement('div', { className:'form-group' },
+            React.createElement('label', { className:'form-label' }, 'URL сайта'),
+            React.createElement('input', { className:'form-input', placeholder:'https://franchise.crazy-cart.ru', value:form.url, onChange:e=>setForm(f=>({...f,url:e.target.value})) })
+          ),
+          React.createElement('div', { className:'form-group' },
+            React.createElement('label', { className:'form-label' }, 'Интервал сканирования'),
+            React.createElement('select', { className:'form-select', value:form.interval, onChange:e=>setForm(f=>({...f,interval:Number(e.target.value)})) },
+              React.createElement('option', { value:5  }, 'Каждые 5 минут'),
+              React.createElement('option', { value:15 }, 'Каждые 15 минут'),
+              React.createElement('option', { value:30 }, 'Каждые 30 минут'),
+              React.createElement('option', { value:60 }, 'Каждый час'),
+              React.createElement('option', { value:360}, 'Каждые 6 часов'),
+            )
+          )
+        ),
+        React.createElement('div', { className:'form-row' },
+          React.createElement('button', { className:'btn btn-primary', onClick:add, disabled:loading },
+            loading ? React.createElement('div', { className:'spinner' }) : '＋',
+            'Добавить'
+          )
+        )
+      )
+    ),
+
+    // Sites list
+    React.createElement('div', { className:'card' },
+      React.createElement('div', { className:'card-header' },
+        React.createElement('span', { className:'card-title' }, `Сайты (${sites.length})`)
+      ),
+      React.createElement('div', { className:'card-body', style:{padding:'12px'} },
+        sites.length === 0
+          ? React.createElement('div', { className:'empty-state' },
+              React.createElement('div', { className:'empty-icon' }, '🌐'),
+              React.createElement('div', { className:'empty-text' }, 'Добавьте первый сайт выше')
+            )
+          : React.createElement('div', { className:'site-list' },
+              sites.map(site =>
+                React.createElement('div', { key:site.id, className:'site-item' },
+                  React.createElement('div', { className:'site-item-info' },
+                    React.createElement('div', { className:'site-item-name' }, site.name),
+                    React.createElement('div', { className:'site-item-url' }, site.url),
+                    React.createElement('div', { className:'site-item-meta' },
+                      React.createElement('span', null, `📞 ${site.leads_count} заявок`),
+                      React.createElement('span', null, `🔍 ${site.scans_count} сканирований`),
+                      React.createElement('span', null, `⏱ каждые ${site.interval} мин`),
+                      React.createElement('span', null, `🕐 ${fmtDate(site.last_scan)}`),
+                      site.last_status === 'error' && React.createElement('span', { style:{color:'var(--danger)'} }, '⚠ ошибка')
+                    )
+                  ),
+                  React.createElement('div', { className:'site-item-actions' },
+                    React.createElement('span', { className:`badge ${site.active ? 'badge-active' : 'badge-paused'}` },
+                      site.active ? 'Активен' : 'Пауза'
+                    ),
+                    React.createElement('button', {
+                      className: `toggle ${site.active ? 'on' : ''}`,
+                      onClick: () => toggle(site),
+                      title: site.active ? 'Выключить' : 'Включить'
+                    }),
+                    React.createElement('button', {
+                      className:'btn btn-ghost btn-sm',
+                      onClick:()=>scan(site.id),
+                      disabled:!!scanning[site.id]
+                    }, scanning[site.id] ? React.createElement('div', {className:'spinner'}) : '▶ Scan'),
+                    React.createElement('button', { className:'btn btn-danger btn-sm', onClick:()=>del(site.id, site.name) }, '✕')
+                  )
+                )
+              )
+            )
+      )
+    )
+  );
+}
+
+// ── LEADS PAGE ───────────────────────────────────────────────────────────────
+function LeadsPage() {
+  const [leads, setLeads]   = useState([]);
+  const [total, setTotal]   = useState(0);
+  const [search, setSearch] = useState('');
+  const [siteFilter, setSiteFilter] = useState('');
+  const [sites, setSites]   = useState([]);
+  const [loading, setLoading] = useState(false);
+  const timer = useRef(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const params = new URLSearchParams({ limit:200, search, ...(siteFilter ? {site_id: siteFilter} : {}) });
+    const r = await api.get(`/api/leads?${params}`);
+    setLeads(r.leads || []);
+    setTotal(r.total || 0);
+    setLoading(false);
+  }, [search, siteFilter]);
+
+  useEffect(() => { api.get('/api/sites').then(setSites); }, []);
+  useEffect(() => {
+    clearTimeout(timer.current);
+    timer.current = setTimeout(load, 300);
+    const t = setInterval(load, 15000);
+    return () => { clearTimeout(timer.current); clearInterval(t); };
+  }, [load]);
+
+  const del = async (id) => {
+    await api.delete(`/api/leads/${id}`);
+    load(); toast('Удалено', 'ok');
+  };
+
+  const exportCsv = () => {
+    const params = siteFilter ? `?site_id=${siteFilter}` : '';
+    window.open(`/api/leads/export${params}`, '_blank');
+    toast('CSV загружается…', 'info');
+  };
+
+  const fmtDate = d => d ? new Date(d + 'Z').toLocaleString('ru') : '—';
+
+  return React.createElement('div', null,
+    React.createElement('div', { className:'card' },
+      // Search row
+      React.createElement('div', { className:'search-row' },
+        React.createElement('input', {
+          className:'search-input',
+          placeholder:'🔍  Поиск по телефону, имени, email…',
+          value:search,
+          onChange:e=>setSearch(e.target.value)
+        }),
+        React.createElement('select', {
+          className:'form-select',
+          style:{width:'180px'},
+          value:siteFilter,
+          onChange:e=>setSiteFilter(e.target.value)
+        },
+          React.createElement('option', { value:'' }, 'Все сайты'),
+          sites.map(s => React.createElement('option', { key:s.id, value:s.id }, s.name))
+        ),
+        React.createElement('button', { className:'btn btn-ghost', onClick:exportCsv }, '⬇ CSV'),
+        React.createElement('div', { style:{color:'var(--muted)', fontSize:'12px', whiteSpace:'nowrap'} },
+          `${leads.length} из ${total}`
+        )
+      ),
+
+      // Table
+      React.createElement('div', { className:'table-wrap' },
+        loading && leads.length === 0
+          ? React.createElement('div', { className:'empty-state' }, React.createElement('div', { className:'spinner' }))
+          : leads.length === 0
+            ? React.createElement('div', { className:'empty-state' },
+                React.createElement('div', { className:'empty-icon' }, '📭'),
+                React.createElement('div', { className:'empty-text' }, 'Заявок пока нет — запустите сканирование')
+              )
+            : React.createElement('table', null,
+                React.createElement('thead', null,
+                  React.createElement('tr', null,
+                    ['Телефон','Имя','Email','Сайт','URL формы','Дата'].map(h =>
+                      React.createElement('th', { key:h }, h)
+                    ),
+                    React.createElement('th', null)
+                  )
+                ),
+                React.createElement('tbody', null,
+                  leads.map(l =>
+                    React.createElement('tr', { key:l.id },
+                      React.createElement('td', { className:'td-phone' }, l.phone || '—'),
+                      React.createElement('td', null, l.name || React.createElement('span', { className:'td-muted' }, '—')),
+                      React.createElement('td', null, l.email || React.createElement('span', { className:'td-muted' }, '—')),
+                      React.createElement('td', { className:'td-site' }, l.site_name),
+                      React.createElement('td', { className:'td-url', title:l.form_url }, l.form_url || '—'),
+                      React.createElement('td', { className:'td-muted' }, fmtDate(l.scanned_at)),
+                      React.createElement('td', null,
+                        React.createElement('button', { className:'btn btn-danger btn-sm', onClick:()=>del(l.id) }, '✕')
+                      )
+                    )
+                  )
+                )
+              )
+      )
+    )
+  );
+}
+
+// ── LOG PAGE ─────────────────────────────────────────────────────────────────
+function LogPage() {
+  const [logs, setLogs] = useState([]);
+  const [sites, setSites] = useState([]);
+  const [filter, setFilter] = useState('');
+
+  const load = () => {
+    const q = filter ? `?site_id=${filter}` : '';
+    api.get(`/api/log${q}`).then(setLogs);
+  };
+
+  useEffect(() => { api.get('/api/sites').then(setSites); }, []);
+  useEffect(() => { load(); const t = setInterval(load, 8000); return () => clearInterval(t); }, [filter]);
+
+  const fmtDate = d => d ? new Date(d + 'Z').toLocaleString('ru') : '—';
+
+  return React.createElement('div', { className:'card' },
+    React.createElement('div', { className:'card-header' },
+      React.createElement('span', { className:'card-title' }, 'Лог сканирований'),
+      React.createElement('select', {
+        className:'form-select', style:{width:'180px'},
+        value:filter, onChange:e=>setFilter(e.target.value)
+      },
+        React.createElement('option', { value:'' }, 'Все сайты'),
+        sites.map(s => React.createElement('option', { key:s.id, value:s.id }, s.name))
+      )
+    ),
+    React.createElement('div', { className:'card-body', style:{padding:'0 16px', maxHeight:'70vh', overflowY:'auto'} },
+      logs.length === 0
+        ? React.createElement('div', { className:'empty-state' },
+            React.createElement('div', { className:'empty-icon' }, '📋'),
+            React.createElement('div', { className:'empty-text' }, 'Лог пуст')
+          )
+        : logs.map(l =>
+            React.createElement('div', { key:l.id, className:`log-line log-${l.status}` },
+              React.createElement('span', { className:'log-time' }, fmtDate(l.scanned_at)),
+              React.createElement('span', { style:{color:'var(--accent2)'} }, l.site_name),
+              React.createElement('span', { className:`badge badge-${l.status}` }, l.status),
+              React.createElement('span', { className:'log-msg' }, l.message),
+              l.duration_ms && React.createElement('span', { className:'td-muted' }, `${l.duration_ms}ms`)
+            )
+          )
+    )
+  );
+}
+
+// ── APP ──────────────────────────────────────────────────────────────────────
+const PAGES = [
+  { id:'leads', icon:'📞', label:'Заявки' },
+  { id:'sites', icon:'🌐', label:'Сайты' },
+  { id:'log',   icon:'📋', label:'Лог' },
+];
+
+function App() {
+  const [page, setPage] = useState('leads');
+
+  const pageEl = page === 'leads' ? React.createElement(LeadsPage)
+               : page === 'sites' ? React.createElement(SitesPage)
+               : React.createElement(LogPage);
+
+  const pageTitle = PAGES.find(p=>p.id===page)?.label || '';
+
+  return React.createElement('div', { className:'app' },
+    // Sidebar
+    React.createElement('aside', { className:'sidebar' },
+      React.createElement('div', { className:'logo' },
+        React.createElement('div', { className:'logo-mark' }, '⬡ FormScanner'),
+        React.createElement('div', { className:'logo-sub' }, 'Панель управления')
+      ),
+      React.createElement('nav', { className:'nav' },
+        PAGES.map(p =>
+          React.createElement('div', {
+            key:p.id,
+            className:`nav-item ${page===p.id ? 'active' : ''}`,
+            onClick:()=>setPage(p.id)
+          },
+            React.createElement('span', { className:'nav-icon' }, p.icon),
+            p.label
+          )
+        )
+      ),
+      React.createElement('div', { className:'sidebar-footer' },
+        React.createElement('span', { className:'status-dot' }),
+        React.createElement('span', { className:'status-label' }, 'Планировщик работает')
+      )
+    ),
+
+    // Main
+    React.createElement('main', { className:'main' },
+      React.createElement('div', { className:'topbar' },
+        React.createElement('div', { className:'page-title' }, pageTitle),
+        React.createElement('div', { className:'topbar-actions' },
+          page === 'leads' && React.createElement('button', {
+            className:'btn btn-primary btn-sm',
+            onClick:()=>{ window.open('/api/leads/export','_blank'); toast('CSV загружается…','info'); }
+          }, '⬇ Экспорт CSV')
+        )
+      ),
+      React.createElement('div', { className:'content' },
+        React.createElement(Stats),
+        pageEl
+      )
+    ),
+
+    React.createElement(Toast)
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+</script>
+</body>
+</html>
