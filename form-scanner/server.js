@@ -114,8 +114,28 @@ async function scanSite(site) {
     // Перехватываем POST-запросы форм
     await page.setRequestInterception(true);
 
-    page.on("request", (req) => {
-      if (req.method() === "POST") {
+    // Домены отправки форм — расширенный список
+    const FORM_DOMAINS = [
+      "forms.tildacdn.com", "tildaforms.com", "tilda.ws",  // Tilda
+      "marquiz.ru", "api.marquiz.ru",                         // Marquiz
+      "getcourse.ru", "go.getcourse.ru",                      // GetCourse
+      "jivo.ru", "jivosite.com",                              // JivoChat
+      "callbackhunter.com", "callback.ru",                   // колбэк-виджеты
+      "formdesigner.ru",                                       // FormDesigner
+      "lpgenerator.ru", "lptracker.ru",                      // LP-конструкторы
+    ];
+    const FORM_PATHS = /\/(form|submit|lead|order|request|callback|application|quiz|result)/i;
+
+    const isFormRequest = (url) => {
+      try {
+        const u = new URL(url);
+        return FORM_DOMAINS.some((d) => u.hostname.includes(d)) || FORM_PATHS.test(u.pathname);
+      } catch (_) { return false; }
+    };
+
+    // Перехватываем запросы и в основном фрейме, и в iframe (Marquiz грузится в iframe)
+    const onRequest = (req) => {
+      if (req.method() === "POST" && isFormRequest(req.url())) {
         const body = req.postData() || "";
         const params = new URLSearchParams(body);
 
@@ -146,6 +166,7 @@ async function scanSite(site) {
         }
 
         if (phone) {
+          console.log('[FORM] Перехвачена заявка:', req.url(), '| телефон:', phone);
           capturedLeads.push({
             phone: normalizePhone(phone),
             name: name || null,
@@ -157,6 +178,13 @@ async function scanSite(site) {
       }
 
       req.continue().catch(() => {});
+    };
+
+    page.on("request", onRequest);
+
+    // Также слушаем новые фреймы (Marquiz, виджеты)
+    page.on("framenavigated", (frame) => {
+      frame.page().setRequestInterception(true).catch(() => {});
     });
 
     // Также слушаем ответы для XHR/fetch (Tilda шлёт JSON)
